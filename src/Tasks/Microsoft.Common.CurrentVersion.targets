@@ -1633,9 +1633,16 @@ Copyright (C) Microsoft Corporation. All rights reserved.
       </_MSBuildProjectReferenceExistent>
     </ItemGroup>
 
+    <PropertyGroup>
+      <!-- Keep track of the first specific platform built so it can be passed to referenced projects. -->
+      <DynamicPlatformResolutionPreferredSpecificPlatform Condition="'$(DynamicPlatformResolutionPreferredSpecificPlatform)' == '' and '$(Platform)' != 'AnyCPU'">$(Platform)</DynamicPlatformResolutionPreferredSpecificPlatform>
+    </PropertyGroup>
+
     <ItemGroup>
-      <_ProjectReferencePlatformPossibilities Include="@(_MSBuildProjectReferenceExistent)" 
-                                              Condition="'%(_MSBuildProjectReferenceExistent.SkipGetPlatformProperties)' != 'true'"/>
+      <_ProjectReferencePlatformPossibilities Include="@(_MSBuildProjectReferenceExistent)"
+                                              Condition="'%(_MSBuildProjectReferenceExistent.SkipGetPlatformProperties)' != 'true'">
+        <AdditionalProperties Condition="'$(DynamicPlatformResolutionPreferredSpecificPlatform)' != ''">%(_MSBuildProjectReferenceExistent.AdditionalProperties);DynamicPlatformResolutionPreferredSpecificPlatform=$(DynamicPlatformResolutionPreferredSpecificPlatform)</AdditionalProperties>
+      </_ProjectReferencePlatformPossibilities>
     </ItemGroup>
 
     <!-- Assign default PlatformLookupTables when doing Managed <-> Unmanaged hops -->
@@ -1649,6 +1656,11 @@ Copyright (C) Microsoft Corporation. All rights reserved.
       <!-- If we're looking at a managed project from a cpp project, map native to managed platforms. -->
       <_ProjectReferencePlatformPossibilities Condition="('$(MSBuildProjectExtension)' == '.vcxproj' or '$(MSBuildProjectExtension)' == '.nativeproj') and '%(_ProjectReferencePlatformPossibilities.IsVcxOrNativeProj)' != 'true'">
         <PlatformLookupTable Condition="'$(UseDefaultPlatformLookupTables)' == 'true' and '$(PlatformLookupTable)' == ''">Win32=x86</PlatformLookupTable>
+      </_ProjectReferencePlatformPossibilities>
+
+      <!-- If an AnyCPU project happens to reference a project with specific platforms, we can use the look up table to tell it which platform to prefer in AnyCPU isn't an option. -->
+      <_ProjectReferencePlatformPossibilities Condition="'$(Platform)' == 'AnyCPU' and '$(DynamicPlatformResolutionPreferredSpecificPlatform)' != ''">
+        <PlatformLookupTable Condition="'$(UseDefaultPlatformLookupTables)' == 'true' and '$(PlatformLookupTable)' == ''">AnyCPU=$(DynamicPlatformResolutionPreferredSpecificPlatform)</PlatformLookupTable>
       </_ProjectReferencePlatformPossibilities>
     </ItemGroup>
 
